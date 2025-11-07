@@ -3,7 +3,7 @@ import itertools
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
-from .writer_encoder import WriterEmbedding
+from .style_encoder import StyleEncoder
 from .ocr_loss import OCRLoss
 from .ocr_loss import OCRLoss
 from .ocr_loss import OCRLoss
@@ -79,20 +79,19 @@ class CycleGANModel(BaseModel):
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
         if self.isTrain:
             self.model_names = ["G_A", "G_B", "D_A", "D_B"]
-            # Add writer_encoder to model_names if using writer conditioning
-            if hasattr(opt, 'num_writers') and opt.num_writers > 0:
-                self.model_names.append("writer_encoder")
+            if hasattr(opt, 'embed_dim') and opt.embed_dim > 0:
+                self.model_names.append("style_encoder")
         else:  # during test time, only load Gs
             self.model_names = ["G_A", "G_B"]
-            if hasattr(opt, 'num_writers') and opt.num_writers > 0:
-                self.model_names.append("writer_encoder")
+            if hasattr(opt, 'embed_dim') and opt.embed_dim > 0:
+                self.model_names.append("style_encoder")
 
-        # Initialize writer embedding if num_writers is specified
+        # Initialize style encoder for ANY user's handwriting
         embed_dim = 0
-        if hasattr(opt, 'num_writers') and opt.num_writers > 0:
-            embed_dim = getattr(opt, 'embed_dim', 128)
-            self.netwriter_encoder = WriterEmbedding(opt.num_writers, embed_dim).to(self.device)
-            print(f"Initialized WriterEmbedding: {opt.num_writers} writers, {embed_dim} dimensions")
+        if hasattr(opt, 'embed_dim'):
+            embed_dim = opt.embed_dim
+            self.netstyle_encoder = StyleEncoder(embed_dim).to(self.device)
+            print(f"Initialized StyleEncoder with {embed_dim} dimensions - Works for ANY handwriting!")
         
         # define networks (both Generators and discriminators)
         # The naming is different from those used in the paper.
@@ -122,10 +121,10 @@ class CycleGANModel(BaseModel):
                 print(f"Initialized OCR Loss with lambda={opt.lambda_OCR}, frequency={self.ocr_frequency}")
             
             # Initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
-            # If using writer embedding, include it in optimizer
-            if hasattr(self, 'netwriter_encoder'):
+            # If using style encoder, include it in optimizer
+            if hasattr(self, 'netstyle_encoder'):
                 self.optimizer_G = torch.optim.Adam(
-                    itertools.chain(self.netG_A.parameters(), self.netG_B.parameters(), self.netwriter_encoder.parameters()), 
+                    itertools.chain(self.netG_A.parameters(), self.netG_B.parameters(), self.netstyle_encoder.parameters()), 
                     lr=opt.lr, betas=(opt.beta1, 0.999)
                 )
             else:
@@ -150,21 +149,16 @@ class CycleGANModel(BaseModel):
         self.real_A = input["A" if AtoB else "B"].to(self.device)
         self.real_B = input["B" if AtoB else "A"].to(self.device)
         self.image_paths = input["A_paths" if AtoB else "B_paths"]
-        
-        # Extract writer_id if available
-        if "writer_id" in input and hasattr(self, 'netwriter_encoder'):
-            self.writer_id = input["writer_id"].to(self.device)
-        else:
-            self.writer_id = None
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        # Get writer style embedding if available
+        # Extract style from real images using StyleEncoder
         writer_style = None
-        if self.writer_id is not None and hasattr(self, 'netwriter_encoder'):
-            writer_style = self.netwriter_encoder(self.writer_id)
+        if hasattr(self, 'netstyle_encoder'):
+            # Use real_A as reference to extract style
+            writer_style = self.netstyle_encoder(self.real_A)
         
-        # Forward pass with writer conditioning
+        # Forward pass with style conditioning
         self.fake_B = self.netG_A(self.real_A, writer_style=writer_style)  # G_A(A)
         self.rec_A = self.netG_B(self.fake_B, writer_style=writer_style)  # G_B(G_A(A))
         self.fake_A = self.netG_B(self.real_B, writer_style=writer_style)  # G_B(B)
@@ -208,10 +202,10 @@ class CycleGANModel(BaseModel):
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
         
-        # Get writer style embedding if available
+        # Extract style from real images
         writer_style = None
-        if self.writer_id is not None and hasattr(self, 'netwriter_encoder'):
-            writer_style = self.netwriter_encoder(self.writer_id)
+        if hasattr(self, 'netstyle_encoder'):
+            writer_style = self.netstyle_encoder(self.real_A)
         
         # Identity loss
         if lambda_idt > 0:

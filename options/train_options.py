@@ -32,10 +32,9 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lr_decay_iters', type=int, default=50, help='multiply by a gamma every lr_decay_iters iterations')
         
         # Writer-Aware CycleGAN parameters
-        parser.add_argument('--lambda_OCR', type=float, default=0.1, help='weight for OCR consistency loss (0 to disable)')
-        parser.add_argument('--num_writers', type=int, default=0, help='total number of unique writers (0 to disable writer conditioning)')
-        parser.add_argument('--embed_dim', type=int, default=128, help='dimension of writer style embedding vector')
-        parser.add_argument('--ocr_frequency', type=int, default=10, help='compute OCR loss every N iterations (to save computation)')
+        parser.add_argument('--lambda_OCR', type=float, default=0.1, help='OCR loss weight (0=disable)')
+        parser.add_argument('--embed_dim', type=int, default=128, help='style embedding dimension')
+        parser.add_argument('--ocr_frequency', type=int, default=10, help='OCR frequency')
 
         self.isTrain = True
         return parser

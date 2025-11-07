@@ -25,6 +25,8 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
 from util.util import init_ddp, cleanup_ddp
+from util.metrics import MetricsLogger
+import os
 
 
 if __name__ == "__main__":
@@ -37,6 +39,11 @@ if __name__ == "__main__":
     model = create_model(opt)  # create a model given opt.model and other options
     model.setup(opt)  # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)  # create a visualizer that display/save images and plots
+    
+    # Initialize metrics logger
+    checkpoint_dir = os.path.join(opt.checkpoints_dir, opt.name)
+    metrics_logger = MetricsLogger(checkpoint_dir)
+    
     total_iters = 0  # the total number of training iterations
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):
         epoch_start_time = time.time()  # timer for entire epoch
@@ -81,6 +88,11 @@ if __name__ == "__main__":
             print(f"saving the model at the end of epoch {epoch}, iters {total_iters}")
             model.save_networks("latest")
             model.save_networks(epoch)
+            
+            # Log metrics
+            losses = model.get_current_losses()
+            metrics_logger.log_epoch(epoch, losses)
+            metrics_logger.print_summary(epoch)
 
         print(f"End of epoch {epoch} / {opt.n_epochs + opt.n_epochs_decay} \t Time Taken: {time.time() - epoch_start_time:.0f} sec")
 
