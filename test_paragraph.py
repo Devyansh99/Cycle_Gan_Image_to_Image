@@ -183,6 +183,7 @@ if __name__ == '__main__':
     opt.batch_size = 1
     opt.serial_batches = True
     opt.no_flip = True
+    opt.isTrain = False
     
     tester = ParagraphTester(opt)
     tester.run_test()
