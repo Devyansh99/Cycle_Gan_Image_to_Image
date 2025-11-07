@@ -128,9 +128,9 @@ class ParagraphTester:
             else:
                 generated = self.model.netG_A(text_tensor)
         
-        # Convert tensors to images
-        style_img_save = tensor2im(style_tensor[0])
-        generated_img = tensor2im(generated[0])
+        # Convert tensors to images (tensor2im handles batch dimension internally)
+        style_img_save = tensor2im(style_tensor)
+        generated_img = tensor2im(generated)
         
         return style_img_save, generated_img
     
