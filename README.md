@@ -18,7 +18,7 @@ python train.py \
   --save_epoch_freq 1 \
   --no_dropout
 ```
-<!-- python train.py --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan --name writer_ocr_cyclegan --model cycle_gan --dataset_mode unaligned --batch_size 1 --n_epochs 15 --n_epochs_decay 10 --lambda_OCR 0.1 --embed_dim 128 --display_freq 100 --print_freq 100 --save_epoch_freq 5 --save_latest_freq 500 --no_dropout --lr 0.0002 -->
+<!-- python train.py --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan --name writer_ocr_cyclegan_1024 --model cycle_gan --dataset_mode unaligned --batch_size 1 --n_epochs 25 --n_epochs_decay 25 --lambda_OCR 0.1 --embed_dim 128 --display_freq 100 --print_freq 100 --save_epoch_freq 5 --save_latest_freq 500 --no_dropout --lr 0.0002 -->
 
 **Outputs:**
 - `checkpoints/{name}/` - Model checkpoints
