@@ -6,6 +6,7 @@ from . import networks
 from .writer_encoder import WriterEmbedding
 from .ocr_loss import OCRLoss
 from .ocr_loss import OCRLoss
+from .ocr_loss import OCRLoss
 
 
 class CycleGANModel(BaseModel):
@@ -206,13 +207,19 @@ class CycleGANModel(BaseModel):
         lambda_idt = self.opt.lambda_identity
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
+        
+        # Get writer style embedding if available
+        writer_style = None
+        if self.writer_id is not None and hasattr(self, 'netwriter_encoder'):
+            writer_style = self.netwriter_encoder(self.writer_id)
+        
         # Identity loss
         if lambda_idt > 0:
             # G_A should be identity if real_B is fed: ||G_A(B) - B||
-            self.idt_A = self.netG_A(self.real_B)
+            self.idt_A = self.netG_A(self.real_B, writer_style=writer_style)
             self.loss_idt_A = self.criterionIdt(self.idt_A, self.real_B) * lambda_B * lambda_idt
             # G_B should be identity if real_A is fed: ||G_B(A) - A||
-            self.idt_B = self.netG_B(self.real_A)
+            self.idt_B = self.netG_B(self.real_A, writer_style=writer_style)
             self.loss_idt_B = self.criterionIdt(self.idt_B, self.real_A) * lambda_A * lambda_idt
         else:
             self.loss_idt_A = 0
