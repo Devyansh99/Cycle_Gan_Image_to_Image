@@ -35,6 +35,56 @@ class UnalignedDataset(BaseDataset):
         output_nc = self.opt.input_nc if btoA else self.opt.output_nc  # get the number of channels of output image
         self.transform_A = get_transform(self.opt, grayscale=(input_nc == 1))
         self.transform_B = get_transform(self.opt, grayscale=(output_nc == 1))
+        
+        # Build writer ID mapping if num_writers is specified
+        self.use_writer_id = hasattr(opt, 'num_writers') and opt.num_writers > 0
+        if self.use_writer_id:
+            self.writer_to_id = self._build_writer_mapping()
+            print(f"Writer ID mapping created: {len(self.writer_to_id)} unique writers")
+    
+    def _build_writer_mapping(self):
+        """
+        Build a mapping from writer prefix to integer ID.
+        Example: 'a01-000u.png' -> writer_prefix='a01' -> writer_id=0
+        """
+        writer_prefixes = set()
+        
+        # Extract all unique writer prefixes from both A and B paths
+        for path in self.A_paths + self.B_paths:
+            filename = os.path.basename(path)
+            # Extract writer ID (part before first '-')
+            # Example: 'a01-000u.png' -> 'a01'
+            if '-' in filename:
+                writer_prefix = filename.split('-')[0]
+                writer_prefixes.add(writer_prefix)
+        
+        # Create sorted mapping: writer_prefix -> integer ID
+        sorted_writers = sorted(list(writer_prefixes))
+        writer_to_id = {writer: idx for idx, writer in enumerate(sorted_writers)}
+        
+        return writer_to_id
+    
+    def _extract_writer_id(self, path):
+        """
+        Extract writer ID from filename.
+        
+        Args:
+            path (str): Full path to image file
+        
+        Returns:
+            int: Writer ID (integer index)
+        """
+        filename = os.path.basename(path)
+        
+        # Extract writer prefix (part before first '-')
+        if '-' in filename:
+            writer_prefix = filename.split('-')[0]
+            # Look up integer ID
+            if writer_prefix in self.writer_to_id:
+                return self.writer_to_id[writer_prefix]
+        
+        # Default to 0 if extraction fails
+        return 0
 
     def __getitem__(self, index):
         """Return a data point and its metadata information.
@@ -60,7 +110,15 @@ class UnalignedDataset(BaseDataset):
         A = self.transform_A(A_img)
         B = self.transform_B(B_img)
 
-        return {"A": A, "B": B, "A_paths": A_path, "B_paths": B_path}
+        # Extract writer ID if enabled
+        result = {"A": A, "B": B, "A_paths": A_path, "B_paths": B_path}
+        
+        if self.use_writer_id:
+            # Extract writer ID from path A
+            writer_id = self._extract_writer_id(A_path)
+            result["writer_id"] = writer_id
+        
+        return result
 
     def __len__(self):
         """Return the total number of images in the dataset.

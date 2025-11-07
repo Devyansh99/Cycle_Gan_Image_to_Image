@@ -129,7 +129,7 @@ def init_net(net, init_type="normal", init_gain=0.02):
     return net
 
 
-def define_G(input_nc, output_nc, ngf, netG, norm="batch", use_dropout=False, init_type="normal", init_gain=0.02):
+def define_G(input_nc, output_nc, ngf, netG, norm="batch", use_dropout=False, init_type="normal", init_gain=0.02, embed_dim=0):
     """Create a generator
 
     Parameters:
@@ -141,6 +141,7 @@ def define_G(input_nc, output_nc, ngf, netG, norm="batch", use_dropout=False, in
         use_dropout (bool) -- if use dropout layers.
         init_type (str)    -- the name of our initialization method.
         init_gain (float)  -- scaling factor for normal, xavier and orthogonal.
+        embed_dim (int)    -- dimension of writer style embedding (0 means no conditioning)
 
     Returns a generator
     """
@@ -148,9 +149,9 @@ def define_G(input_nc, output_nc, ngf, netG, norm="batch", use_dropout=False, in
     norm_layer = get_norm_layer(norm_type=norm)
 
     if netG == "resnet_9blocks":
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9)
+        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, embed_dim=embed_dim)
     elif netG == "resnet_6blocks":
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6)
+        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, embed_dim=embed_dim)
     elif netG == "unet_128":
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     elif netG == "unet_256":
@@ -316,7 +317,7 @@ class ResnetGenerator(nn.Module):
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
     """
 
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, padding_type="reflect"):
+    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, padding_type="reflect", embed_dim=0):
         """Construct a Resnet-based generator
 
         Parameters:
@@ -327,6 +328,7 @@ class ResnetGenerator(nn.Module):
             use_dropout (bool)  -- if use dropout layers
             n_blocks (int)      -- the number of ResNet blocks
             padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
+            embed_dim (int)     -- dimension of writer style embedding (0 means no conditioning)
         """
         assert n_blocks >= 0
         super(ResnetGenerator, self).__init__()
@@ -335,7 +337,12 @@ class ResnetGenerator(nn.Module):
         else:
             use_bias = norm_layer == nn.InstanceNorm2d
 
-        model = [nn.ReflectionPad2d(3), nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias), norm_layer(ngf), nn.ReLU(True)]
+        # Store embed_dim for forward pass
+        self.embed_dim = embed_dim
+        # Adjust input channels if using writer style conditioning
+        actual_input_nc = input_nc + embed_dim if embed_dim > 0 else input_nc
+
+        model = [nn.ReflectionPad2d(3), nn.Conv2d(actual_input_nc, ngf, kernel_size=7, padding=0, bias=use_bias), norm_layer(ngf), nn.ReLU(True)]
 
         n_downsampling = 2
         for i in range(n_downsampling):  # add downsampling layers
@@ -356,8 +363,24 @@ class ResnetGenerator(nn.Module):
 
         self.model = nn.Sequential(*model)
 
-    def forward(self, input):
-        """Standard forward"""
+    def forward(self, input, writer_style=None):
+        """Standard forward with optional writer style conditioning
+        
+        Parameters:
+            input (Tensor)        -- input image tensor, shape [B, C, H, W]
+            writer_style (Tensor) -- writer style embedding, shape [B, embed_dim] (optional)
+        
+        Returns:
+            Tensor -- generated output image
+        """
+        # If writer style is provided, concatenate it spatially with input
+        if writer_style is not None and self.embed_dim > 0:
+            # Expand writer_style to match spatial dimensions: [B, embed_dim] -> [B, embed_dim, H, W]
+            B, C, H, W = input.shape
+            writer_style_expanded = writer_style.view(B, self.embed_dim, 1, 1).expand(B, self.embed_dim, H, W)
+            # Concatenate along channel dimension
+            input = torch.cat([input, writer_style_expanded], dim=1)
+        
         return self.model(input)
 
 
