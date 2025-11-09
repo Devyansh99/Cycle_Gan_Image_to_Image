@@ -34,7 +34,7 @@ class ParagraphTester:
         
         # Image transforms
         self.transform = transforms.Compose([
-            transforms.Resize((256, 256)),
+            transforms.Resize((512, 512)),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
@@ -46,7 +46,7 @@ class ParagraphTester:
             "Machine learning can generate personalized handwriting."
         )
     
-    def create_text_image(self, text, size=(512, 256)):
+    def create_text_image(self, text, size=(512, 512)):
         """Create a simple text image as input"""
         img = Image.new('RGB', size, color='white')
         draw = ImageDraw.Draw(img)
