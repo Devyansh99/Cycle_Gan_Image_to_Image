@@ -33,6 +33,7 @@ class TrainOptions(BaseOptions):
         
         # Writer-Aware CycleGAN parameters
         parser.add_argument('--lambda_OCR', type=float, default=0.1, help='OCR loss weight (0=disable)')
+        parser.add_argument('--lambda_style', type=float, default=1.0, help='Style loss weight (forces handwriting style transfer)')
         parser.add_argument('--embed_dim', type=int, default=128, help='style embedding dimension')
         parser.add_argument('--ocr_frequency', type=int, default=10, help='OCR frequency')
 

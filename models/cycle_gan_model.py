@@ -5,8 +5,7 @@ from .base_model import BaseModel
 from . import networks
 from .style_encoder import StyleEncoder
 from .ocr_loss import OCRLoss
-from .ocr_loss import OCRLoss
-from .ocr_loss import OCRLoss
+from .style_loss import StyleLoss
 
 
 class CycleGANModel(BaseModel):
@@ -68,6 +67,10 @@ class CycleGANModel(BaseModel):
         if hasattr(opt, 'lambda_OCR') and opt.lambda_OCR > 0:
             self.loss_names.append("OCR")
         
+        # Add Style loss if lambda_style > 0
+        if hasattr(opt, 'lambda_style') and opt.lambda_style > 0:
+            self.loss_names.append("style")
+        
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ["real_A", "fake_B", "rec_A"]
         visual_names_B = ["real_B", "fake_A", "rec_B"]
@@ -118,6 +121,11 @@ class CycleGANModel(BaseModel):
                 self.ocr_loss_module = OCRLoss(device=self.device)
                 self.ocr_iter_counter = 0  # Counter to run OCR every N iterations
                 self.ocr_frequency = getattr(opt, 'ocr_frequency', 10)  # Run OCR every 10 iterations
+            
+            # Initialize Style loss if lambda_style > 0
+            if hasattr(opt, 'lambda_style') and opt.lambda_style > 0:
+                self.style_loss_module = StyleLoss().to(self.device)
+                print(f"Style Loss enabled with weight {opt.lambda_style}")
                 print(f"Initialized OCR Loss with lambda={opt.lambda_OCR}, frequency={self.ocr_frequency}")
             
             # Initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
@@ -245,8 +253,15 @@ class CycleGANModel(BaseModel):
         else:
             self.loss_OCR = torch.tensor(0.0, device=self.device)
         
+        # Style consistency loss - force fake_B to have same style as real_A
+        if hasattr(self, 'style_loss_module') and hasattr(self.opt, 'lambda_style'):
+            # Compute style loss: fake_B should have similar style to real_A
+            self.loss_style = self.style_loss_module.compute_loss(self.fake_B, self.real_A) * self.opt.lambda_style
+        else:
+            self.loss_style = torch.tensor(0.0, device=self.device)
+        
         # combined loss and calculate gradients
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_OCR
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_OCR + self.loss_style
         self.loss_G.backward()
 
     def optimize_parameters(self):
