@@ -18,11 +18,9 @@ python train.py \
   --save_epoch_freq 1 \
   --no_dropout
 ```
-<!-- python train.py --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan --name writer_ocr_cyclegan_512 --model cycle_gan --dataset_mode unaligned --batch_size 1 --n_epochs 50 --n_epochs_decay 50 --lambda_OCR 0.1 --embed_dim 128 --display_freq 100 --print_freq 100 --save_epoch_freq 5 --save_latest_freq 500 --no_dropout --lr 0.0002 -->
+<!-- python train.py --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan --name writer_ocr_style_512 --model cycle_gan --dataset_mode unaligned --batch_size 1 --n_epochs 20 --n_epochs_decay 10 --lambda_OCR 0.05 --lambda_style 1.0 --embed_dim 128 --display_freq 100 --print_freq 100 --save_epoch_freq 5 --save_latest_freq 500 --no_dropout --lr 0.0002 -->
 
-<!-- python test_paragraph.py --checkpoints_dir ./checkpoints --name writer_ocr_cyclegan_512 --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan -->
-
-<!-- python test_three_lines.py --style_image $(ls /home/studentiotlab/image_to_image/data/iam_cyclegan/testA/ | head -1 | xargs -I {} echo /home/studentiotlab/image_to_image/data/iam_cyclegan/testA/{}) --output_dir ./three_lines_512 --checkpoints_dir ./checkpoints --name writer_ocr_cyclegan_512 --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan -->
+<!-- python test_paragraph.py --checkpoints_dir ./checkpoints --name writer_ocr_style_512 --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan -->
 
 **Outputs:**
 - `checkpoints/{name}/` - Model checkpoints
