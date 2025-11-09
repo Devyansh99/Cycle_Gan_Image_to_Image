@@ -22,6 +22,8 @@ python train.py \
 
 <!-- python test_paragraph.py --checkpoints_dir ./checkpoints --name writer_ocr_cyclegan_512 --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan -->
 
+<!-- python test_three_lines.py --style_image $(ls /home/studentiotlab/image_to_image/data/iam_cyclegan/testA/ | head -1 | xargs -I {} echo /home/studentiotlab/image_to_image/data/iam_cyclegan/testA/{}) --output_dir ./three_lines_512 --checkpoints_dir ./checkpoints --name writer_ocr_cyclegan_512 --dataroot /home/studentiotlab/image_to_image/data/iam_cyclegan -->
+
 **Outputs:**
 - `checkpoints/{name}/` - Model checkpoints
 - `checkpoints/{name}/metrics.json` - Training metrics
